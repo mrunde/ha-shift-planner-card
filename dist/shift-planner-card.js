@@ -85,8 +85,7 @@ class ShiftPlannerCard extends HTMLElement {
         }
         nav {
           display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
+          border-bottom: 1px solid var(--divider-color);
           margin-bottom: 12px;
         }
         button {
@@ -100,10 +99,18 @@ class ShiftPlannerCard extends HTMLElement {
           min-height: 44px;
         }
         nav button {
+          flex: 1;
           padding: 8px 12px;
+          border: 0;
+          border-bottom: 3px solid transparent;
+          border-radius: 0;
+          background: transparent;
+          color: var(--secondary-text-color);
         }
         nav button[aria-pressed="true"] {
-          border-color: var(--primary-color);
+          border-bottom-color: var(--primary-color);
+          color: var(--primary-color);
+          font-weight: bold;
         }
         button:focus-visible {
           outline: 3px solid var(--primary-color);
@@ -129,19 +136,17 @@ class ShiftPlannerCard extends HTMLElement {
         .free {
           background: var(--success-color, #43a047);
         }
-        .occupied {
-          background: var(--error-color, #db4437);
+        .occupied button {
+          background: var(--secondary-background-color, #eeeeee);
+          color: var(--secondary-text-color, #757575);
+          opacity: 1;
         }
         .row .match {
-          background: var(--success-color, #43a047);
-          color: white;
+          background: #d32f2f;
+          color: #ffffff;
+          border-color: #d32f2f;
           opacity: 1;
           font-weight: bold;
-        }
-        .events {
-          font-size: 12px;
-          margin-top: 4px;
-          overflow-wrap: anywhere;
         }
         .error {
           color: var(--error-color);
@@ -172,15 +177,6 @@ class ShiftPlannerCard extends HTMLElement {
             navigation.append(button);
         });
 
-        const refresh = this._element("button", "Aktualisieren");
-        refresh.disabled = this._busy;
-        refresh.onclick = () => this._run(() =>
-            this._hass.callService("homeassistant", "update_entity", {
-                entity_id: this._config.entity,
-            })
-        );
-
-        navigation.append(refresh);
         card.append(navigation);
 
         if (this._error) {
@@ -260,14 +256,6 @@ class ShiftPlannerCard extends HTMLElement {
             }
 
             section.append(row);
-
-            if (occupied) {
-                section.append(this._element(
-                    "div",
-                    day.summaries.join(", "),
-                    "events"
-                ));
-            }
 
             card.append(section);
         }
