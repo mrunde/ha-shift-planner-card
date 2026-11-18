@@ -1,4 +1,7 @@
 # ha-shift-planner-card
+
+![Shift Planner icon](brand/icon.png)
+
 Home Assistant card to show the work shift of the current or next week.
 
 Requires the [Shift Planner integration](https://github.com/mrunde/ha-shift-planner)
