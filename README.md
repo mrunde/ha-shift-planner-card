@@ -15,6 +15,20 @@ updates automatically when its Home Assistant sensor changes.
 Shift buttons are populated from the shifts configured in the integration.
 Their configured start and end times are shown in the button tooltip.
 
+## Configure in Home Assistant
+
+Edit your dashboard, select **Add card**, and search for **Shift Planner**.
+Choose your **Shift Planner sensor** if one isn't already selected. Optionally
+set a **Title** (defaults to `Dienstplan`) and choose the **Starting week**
+(defaults to **This week**), then select **Save**.
+
+The visual editor follows your Home Assistant profile language. It supports
+German and English and falls back to English for other languages.
+
+To change these settings later, edit the card from the dashboard. Existing YAML
+configurations still work with `type: custom:shift-planner-card`, `entity`, and
+the optional `title` and `week` (`current` or `next`) settings.
+
 ## Preview
 
 ![Shift Planner card with week tabs, red selected shifts, greyed-out alternatives, and green available days](docs/shift-planner-preview.png)

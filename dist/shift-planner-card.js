@@ -1,4 +1,91 @@
+const editorTranslations = {
+    en: {
+        entity: "Shift Planner sensor",
+        title: "Title",
+        week: "Starting week",
+        current: "This week",
+        next: "Next week",
+        weekHelp: "Defaults to this week",
+        missingEntity: "Specify the Shift Planner sensor",
+        invalidWeek: "Week must be current or next",
+    },
+    de: {
+        entity: "Shift-Planner-Sensor",
+        title: "Titel",
+        week: "Startwoche",
+        current: "Diese Woche",
+        next: "Nächste Woche",
+        weekHelp: "Standard: Diese Woche",
+        missingEntity: "Wähle den Shift-Planner-Sensor aus",
+        invalidWeek: "Die Startwoche muss „Diese Woche“ oder „Nächste Woche“ sein",
+    },
+};
+
+function getEditorTranslations() {
+    // Home Assistant sets the document language to the user's interface language.
+    const language = document.documentElement.lang.toLowerCase().split("-")[0];
+    return language === "de" ? editorTranslations.de : editorTranslations.en;
+}
+
 class ShiftPlannerCard extends HTMLElement {
+    static getConfigForm() {
+        const messages = getEditorTranslations();
+        return {
+            schema: [
+                {
+                    name: "entity",
+                    required: true,
+                    selector: {
+                        entity: {
+                            filter: { domain: "sensor", integration: "shift_planner" },
+                        },
+                    },
+                },
+                { name: "title", selector: { text: {} } },
+                {
+                    name: "week",
+                    selector: {
+                        select: {
+                            mode: "dropdown",
+                            options: [
+                                { value: "current", label: messages.current },
+                                { value: "next", label: messages.next },
+                            ],
+                        },
+                    },
+                },
+            ],
+            computeLabel: ({ name }) => ({
+                entity: messages.entity,
+                title: messages.title,
+                week: messages.week,
+            })[name],
+            computeHelper: ({ name }) =>
+                name === "week" ? messages.weekHelp : undefined,
+        };
+    }
+
+    static getStubConfig(hass, entities = [], entitiesFallback = []) {
+        const states = hass?.states ?? {};
+        const registry = hass?.entities ?? {};
+        const entity = [
+            ...entities,
+            ...entitiesFallback,
+            ...Object.keys(states),
+        ].find((id) => {
+            if (!id.startsWith("sensor.")) return false;
+            const platform = registry[id]?.platform;
+            if (platform) return platform === "shift_planner";
+            const attributes = states[id]?.attributes;
+            return (
+                Array.isArray(attributes?.days) &&
+                Array.isArray(attributes?.shifts)
+            );
+        });
+
+        return entity ? { entity, week: "current" } : { week: "current" };
+    }
+
     constructor() {
         super();
         this.attachShadow({ mode: "open" });
@@ -8,11 +95,11 @@ class ShiftPlannerCard extends HTMLElement {
 
     setConfig(config) {
         if (!config.entity) {
-            throw new Error("Specify the Shift Planner sensor");
+            throw new Error(getEditorTranslations().missingEntity);
         }
 
         if (config.week && !["current", "next"].includes(config.week)) {
-            throw new Error("week must be current or next");
+            throw new Error(getEditorTranslations().invalidWeek);
         }
 
         this._config = config;
@@ -28,6 +115,12 @@ class ShiftPlannerCard extends HTMLElement {
         if (previous !== this._entity) {
             this._render();
         }
+    }
+
+    set preview(preview) {
+        if (this._preview === preview) return;
+        this._preview = preview;
+        this._render();
     }
 
     getCardSize() {
@@ -240,7 +333,8 @@ class ShiftPlannerCard extends HTMLElement {
                     selected ? "match" : ""
                 );
 
-                button.disabled = occupied || this._busy;
+                button.disabled =
+                    occupied || this._busy || this._preview === true;
                 button.setAttribute("aria-pressed", String(selected));
                 const timeRange = shift.end
                     ? `${shift.start}-${shift.end}`
