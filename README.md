@@ -9,6 +9,9 @@ white text; other shifts on the same day are greyed out and cannot be selected.
 Days without a shift remain green and allow you to create a shift. The card
 updates automatically when its Home Assistant sensor changes.
 
+Shift buttons are populated from the shifts configured in the integration.
+Their configured start and end times are shown in the button tooltip.
+
 ## Preview
 
 ![Shift Planner card with week tabs, red selected shifts, greyed-out alternatives, and green available days](docs/shift-planner-preview.png)

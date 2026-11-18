@@ -242,7 +242,10 @@ class ShiftPlannerCard extends HTMLElement {
 
                 button.disabled = occupied || this._busy;
                 button.setAttribute("aria-pressed", String(selected));
-                button.title = `${shift.id}, ${shift.start}`;
+                const timeRange = shift.end
+                    ? `${shift.start}-${shift.end}`
+                    : shift.start;
+                button.title = `${shift.id}, ${timeRange}`;
 
                 button.onclick = () => this._run(() =>
                     this._hass.callService("shift_planner", "create_shift", {
