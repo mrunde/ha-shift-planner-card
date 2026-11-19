@@ -226,13 +226,18 @@ class ShiftPlannerCard extends HTMLElement {
           padding: 5px;
           border-radius: 10px;
         }
-        .free {
+        .free button {
           background: var(--success-color, #43a047);
+          color: #ffffff;
+          border-color: var(--success-color, #43a047);
         }
         .occupied button {
           background: var(--secondary-background-color, #eeeeee);
           color: var(--secondary-text-color, #757575);
           opacity: 1;
+        }
+        .occupied button:not(:disabled):not(.match):hover {
+          border-color: var(--primary-color);
         }
         .row .match {
           background: #d32f2f;
@@ -305,6 +310,7 @@ class ShiftPlannerCard extends HTMLElement {
 
         for (const day of days) {
             const occupied = day.summaries.length > 0;
+            const updatable = day.summaries.length === 1;
             const section = this._element("section", undefined, "day");
 
             const date = new Date(`${day.date}T12:00:00Z`);
@@ -334,7 +340,9 @@ class ShiftPlannerCard extends HTMLElement {
                 );
 
                 button.disabled =
-                    occupied || this._busy || this._preview === true;
+                    (occupied && (!updatable || selected)) ||
+                    this._busy ||
+                    this._preview === true;
                 button.setAttribute("aria-pressed", String(selected));
                 const timeRange = shift.end
                     ? `${shift.start}-${shift.end}`
@@ -342,11 +350,15 @@ class ShiftPlannerCard extends HTMLElement {
                 button.title = `${shift.id}, ${timeRange}`;
 
                 button.onclick = () => this._run(() =>
-                    this._hass.callService("shift_planner", "create_shift", {
-                        config_entry_id: attributes.config_entry_id,
-                        date: day.date,
-                        shift: shift.id,
-                    })
+                    this._hass.callService(
+                        "shift_planner",
+                        occupied ? "update_shift" : "create_shift",
+                        {
+                            config_entry_id: attributes.config_entry_id,
+                            date: day.date,
+                            shift: shift.id,
+                        }
+                    )
                 );
 
                 row.append(button);

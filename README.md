@@ -8,9 +8,11 @@ Requires the [Shift Planner integration](https://github.com/mrunde/ha-shift-plan
 to be installed and configured in Home Assistant.
 
 Switch between weeks using the tabs. Selected shifts have a red background and
-white text; other shifts on the same day are greyed out and cannot be selected.
-Days without a shift remain green and allow you to create a shift. The card
-updates automatically when its Home Assistant sensor changes.
+white text. Days without an event remain green and allow you to create a shift.
+On a day with exactly one event, choose another shift to update that event in
+place; days with multiple events cannot be updated. Updating shifts requires
+version 0.3.0 or later of the integration. The card updates automatically when
+its Home Assistant sensor changes.
 
 Shift buttons are populated from the shifts configured in the integration.
 Their configured start and end times are shown in the button tooltip.
