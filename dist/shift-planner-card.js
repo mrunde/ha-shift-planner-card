@@ -5,6 +5,9 @@ const editorTranslations = {
         week: "Starting week",
         current: "This week",
         next: "Next week",
+        today: "Today",
+        free: "Free",
+        deleteDayEvents: "Delete all events starting on this day",
         weekHelp: "Defaults to this week",
         missingEntity: "Specify the Shift Planner sensor",
         invalidWeek: "Week must be current or next",
@@ -15,6 +18,9 @@ const editorTranslations = {
         week: "Startwoche",
         current: "Diese Woche",
         next: "Nächste Woche",
+        today: "Heute",
+        free: "Frei",
+        deleteDayEvents: "Alle an diesem Tag beginnenden Termine löschen",
         weekHelp: "Standard: Diese Woche",
         missingEntity: "Wähle den Shift-Planner-Sensor aus",
         invalidWeek: "Die Startwoche muss „Diese Woche“ oder „Nächste Woche“ sein",
@@ -91,6 +97,28 @@ class ShiftPlannerCard extends HTMLElement {
         this.attachShadow({ mode: "open" });
         this._busy = false;
         this._error = "";
+    }
+
+    connectedCallback() {
+        this._scheduleTodayRefresh();
+    }
+
+    disconnectedCallback() {
+        clearTimeout(this._todayTimer);
+    }
+
+    _scheduleTodayRefresh() {
+        clearTimeout(this._todayTimer);
+        const now = new Date();
+        const nextMidnight = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1
+        );
+        this._todayTimer = setTimeout(() => {
+            this._render();
+            this._scheduleTodayRefresh();
+        }, nextMidnight.getTime() - now.getTime());
     }
 
     setConfig(config) {
@@ -219,17 +247,47 @@ class ShiftPlannerCard extends HTMLElement {
           font-weight: 500;
           margin-bottom: 5px;
         }
+        .day.today {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 3px;
+          border-radius: 10px;
+        }
+        .day.today .label {
+          color: var(--primary-color);
+          font-weight: 700;
+        }
+        .today-badge {
+          margin-left: 8px;
+          padding: 2px 6px;
+          border-radius: 999px;
+          background: var(--primary-color);
+          color: var(--text-primary-color, #ffffff);
+          font-size: 0.75em;
+          font-weight: 600;
+          vertical-align: middle;
+        }
         .row {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: minmax(0, 0.9fr) 11px repeat(4, minmax(0, 1fr));
           gap: 5px;
           padding: 5px;
           border-radius: 10px;
         }
+        .free-separator {
+          background: var(--divider-color);
+          justify-self: center;
+          width: 1px;
+        }
         .free button {
+          background: var(--secondary-background-color, #eeeeee);
+          color: var(--secondary-text-color, #757575);
+          border-color: var(--divider-color);
+        }
+        .free button.free-option {
           background: var(--success-color, #43a047);
           color: #ffffff;
           border-color: var(--success-color, #43a047);
+          opacity: 1;
         }
         .occupied button {
           background: var(--secondary-background-color, #eeeeee);
@@ -245,6 +303,20 @@ class ShiftPlannerCard extends HTMLElement {
           border-color: #d32f2f;
           opacity: 1;
           font-weight: bold;
+        }
+        .day.past .row.free .free-option,
+        .day.past .row .match {
+          background: #424242;
+          color: #ffffff;
+          border-color: #424242;
+          opacity: 1;
+        }
+        .day.past .row .match {
+          font-weight: bold;
+        }
+        .day.past .row.free .free-option:not(:disabled):hover,
+        .day.past .row .match:not(:disabled):hover {
+          border-color: #424242;
         }
         .error {
           color: var(--error-color);
@@ -307,11 +379,25 @@ class ShiftPlannerCard extends HTMLElement {
             this._week * 7,
             this._week * 7 + 7
         );
+        const messages = getEditorTranslations();
+        const now = new Date();
+        const today = [
+            now.getFullYear(),
+            String(now.getMonth() + 1).padStart(2, "0"),
+            String(now.getDate()).padStart(2, "0"),
+        ].join("-");
 
         for (const day of days) {
             const occupied = day.summaries.length > 0;
             const updatable = day.summaries.length === 1;
-            const section = this._element("section", undefined, "day");
+            const isPast = day.date < today;
+            const isToday = day.date === today;
+            const section = this._element(
+                "section",
+                undefined,
+                `day${isPast ? " past" : ""}${isToday ? " today" : ""}`
+            );
+            if (isToday) section.setAttribute("aria-current", "date");
 
             const date = new Date(`${day.date}T12:00:00Z`);
             const label = new Intl.DateTimeFormat("de-DE", {
@@ -321,7 +407,15 @@ class ShiftPlannerCard extends HTMLElement {
                 timeZone: "UTC",
             }).format(date);
 
-            section.append(this._element("div", label, "label"));
+            const dayLabel = this._element("div", label, "label");
+            if (isToday) {
+                dayLabel.append(this._element(
+                    "span",
+                    messages.today,
+                    "today-badge"
+                ));
+            }
+            section.append(dayLabel);
 
             const row = this._element(
                 "div",
@@ -330,6 +424,33 @@ class ShiftPlannerCard extends HTMLElement {
             );
             row.setAttribute("role", "group");
             row.setAttribute("aria-label", label);
+
+            const freeButton = this._element(
+                "button",
+                messages.free,
+                "free-option"
+            );
+            freeButton.disabled =
+                !occupied ||
+                this._busy ||
+                this._preview === true;
+            freeButton.setAttribute("aria-pressed", String(!occupied));
+            freeButton.title = messages.deleteDayEvents;
+            freeButton.onclick = () => this._run(() =>
+                this._hass.callService(
+                    "shift_planner",
+                    "delete_events",
+                    {
+                        config_entry_id: attributes.config_entry_id,
+                        date: day.date,
+                    }
+                )
+            );
+            row.append(freeButton);
+
+            const separator = this._element("div", undefined, "free-separator");
+            separator.setAttribute("aria-hidden", "true");
+            row.append(separator);
 
             for (const shift of attributes.shifts) {
                 const selected = day.summaries.includes(shift.id);
